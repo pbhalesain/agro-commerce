@@ -6,3 +6,310 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// User model for authentication and orders
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  orders  Order[]
+  reviews Review[]
+
+  @@map("users")
+}
+
+// Category model
+model Category {
+  id          String @id @default(cuid())
+  title       String
+  slug        String @unique
+  image       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  products Product[]
+  blogs    Blog[]
+
+  @@map("categories")
+}
+
+// Product model
+model Product {
+  id               String    @id @default(cuid())
+  title            String
+  slug             String    @unique
+  shortDescription String
+  description      String?
+  price            Decimal   @db.Decimal(10, 2)
+  discountedPrice  Decimal?  @db.Decimal(10, 2)
+  quantity         Int       @default(0)
+  sku              String?
+  body             String?   @db.Text
+  tags             String[]
+  offers           String[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  categoryId            String?
+  category              Category?                   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  productVariants       ProductVariant[]
+  reviews               Review[]
+  additionalInformation AdditionalInformation[]
+  customAttributes      CustomAttribute[]
+  orderItems            OrderItem[]
+  heroSliders           HeroSlider[]
+  heroBanners           HeroBanner[]
+  countdowns            Countdown[]
+
+  @@map("products")
+}
+
+// Product variant model
+model ProductVariant {
+  id        String  @id @default(cuid())
+  image     String
+  color     String
+  size      String
+  isDefault Boolean @default(false)
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+// Review model
+model Review {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  comment    String   @db.Text
+  ratings    Int      @default(1)
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("reviews")
+}
+
+// Additional information model
+model AdditionalInformation {
+  id          String @id @default(cuid())
+  name        String
+  description String @db.Text
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("additional_information")
+}
+
+// Custom attribute model
+model CustomAttribute {
+  id            String @id @default(cuid())
+  attributeName String
+
+  // Relations
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeValues AttributeValue[]
+
+  @@map("custom_attributes")
+}
+
+// Attribute value model
+model AttributeValue {
+  id    String @id @default(cuid())
+  title String
+
+  // Relations
+  customAttributeId String
+  customAttribute   CustomAttribute @relation(fields: [customAttributeId], references: [id], onDelete: Cascade)
+
+  @@map("attribute_values")
+}
+
+// Author model
+model Author {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  image       String?
+  bio         String? @db.Text
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  blogs Blog[]
+
+  @@map("authors")
+}
+
+// Blog model
+model Blog {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  metadata  String?
+  tags      String[]
+  mainImage String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  authorId   String
+  author     Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("blogs")
+}
+
+// Order model
+model Order {
+  id         String      @id @default(cuid())
+  orderId    String      @unique
+  status     OrderStatus @default(PENDING)
+  totalPrice Decimal     @db.Decimal(10, 2)
+  quantity   Int
+  orderTitle String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relations
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+// Order item model
+model OrderItem {
+  id       String  @id @default(cuid())
+  quantity Int
+  price    Decimal @db.Decimal(10, 2)
+  color    String?
+  size     String?
+
+  // Relations
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+// Order status enum
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+// Coupon model
+model Coupon {
+  id             String   @id @default(cuid())
+  name           String
+  code           String   @unique
+  discount       Decimal  @db.Decimal(5, 2)
+  maxRedemptions Int
+  timesRedeemed  Int      @default(0)
+  isActive       Boolean  @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("coupons")
+}
+
+// Hero slider model
+model HeroSlider {
+  id           String   @id @default(cuid())
+  sliderName   String
+  sliderImage  String
+  discountRate Int
+  slug         String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("hero_sliders")
+}
+
+// Hero banner model
+model HeroBanner {
+  id          String   @id @default(cuid())
+  bannerName  String?
+  bannerImage String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("hero_banners")
+}
+
+// Countdown model
+model Countdown {
+  id       String   @id @default(cuid())
+  title    String
+  subtitle String
+  image    String
+  date     DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("countdowns")
+}
+
+// Menu model
+model Menu {
+  id     String  @id @default(cuid())
+  title  String
+  path   String?
+  newTab Boolean @default(false)
+  order  Int     @default(0)
+
+  // Self-referential relation for submenus
+  parentId String?
+  parent   Menu?   @relation("MenuSubmenu", fields: [parentId], references: [id], onDelete: Cascade)
+  submenu  Menu[]  @relation("MenuSubmenu")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("menus")
+}
